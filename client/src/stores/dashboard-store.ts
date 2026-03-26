@@ -9,7 +9,8 @@ export type WidgetType =
   | 'links'
   | 'workspace_ref'
   | 'section'
-  | 'project';
+  | 'project'
+  | 'radar' | 'treemap' | 'gauge' | 'funnel' | 'scatter' | 'heatmap';
 
 export interface Position {
   x: number; y: number; w: number; h: number;

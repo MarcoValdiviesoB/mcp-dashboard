@@ -15,6 +15,12 @@ import { LinksWidget } from './types/LinksWidget';
 import { WorkspaceRefWidget } from './types/WorkspaceRefWidget';
 import { SectionWidget } from './types/SectionWidget';
 import { ProjectWidget } from './types/ProjectWidget';
+import { RadarWidget } from './types/RadarWidget';
+import { TreemapWidget } from './types/TreemapWidget';
+import { GaugeWidget } from './types/GaugeWidget';
+import { FunnelWidget } from './types/FunnelWidget';
+import { ScatterWidget } from './types/ScatterWidget';
+import { HeatmapWidget } from './types/HeatmapWidget';
 
 const REGISTRY: Record<string, React.ComponentType<{ data: any; config?: any }>> = {
   metric_card: MetricCard,
@@ -33,6 +39,12 @@ const REGISTRY: Record<string, React.ComponentType<{ data: any; config?: any }>>
   workspace_ref: WorkspaceRefWidget,
   section: SectionWidget,
   project: ProjectWidget,
+  radar: RadarWidget,
+  treemap: TreemapWidget,
+  gauge: GaugeWidget,
+  funnel: FunnelWidget,
+  scatter: ScatterWidget,
+  heatmap: HeatmapWidget,
 };
 
 interface WidgetRendererProps {

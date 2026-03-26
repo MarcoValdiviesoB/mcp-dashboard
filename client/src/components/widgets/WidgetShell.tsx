@@ -28,6 +28,12 @@ const TYPE_GLOW: Record<string, { border: string; shadow: string }> = {
   workspace_ref:    { border: 'border-teal-500/15',    shadow: 'hover:shadow-teal-500/5' },
   section:          { border: 'border-transparent',     shadow: '' },
   project:          { border: 'border-indigo-500/15',  shadow: 'hover:shadow-indigo-500/5' },
+  radar:            { border: 'border-cyan-500/15',    shadow: 'hover:shadow-cyan-500/5' },
+  treemap:          { border: 'border-lime-500/15',    shadow: 'hover:shadow-lime-500/5' },
+  gauge:            { border: 'border-orange-500/15',  shadow: 'hover:shadow-orange-500/5' },
+  funnel:           { border: 'border-blue-500/15',    shadow: 'hover:shadow-blue-500/5' },
+  scatter:          { border: 'border-fuchsia-500/15', shadow: 'hover:shadow-fuchsia-500/5' },
+  heatmap:          { border: 'border-red-500/15',     shadow: 'hover:shadow-red-500/5' },
 };
 
 export function WidgetShell({ widget, compact }: WidgetShellProps) {

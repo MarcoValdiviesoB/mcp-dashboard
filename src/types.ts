@@ -16,7 +16,13 @@ export type WidgetType =
   | 'links'
   | 'workspace_ref'
   | 'section'
-  | 'project';
+  | 'project'
+  | 'radar'
+  | 'treemap'
+  | 'gauge'
+  | 'funnel'
+  | 'scatter'
+  | 'heatmap';
 
 export interface Position {
   x: number;
@@ -336,6 +342,30 @@ export const WIDGET_REGISTRY: Record<WidgetType, WidgetTypeDefinition> = {
   project: {
     type: 'project', label: 'Project', icon: 'folder-kanban',
     defaultSize: { w: 4, h: 5 }, minSize: { w: 3, h: 3 }, supportsStreaming: false,
+  },
+  radar: {
+    type: 'radar', label: 'Radar', icon: 'radar',
+    defaultSize: { w: 5, h: 4 }, minSize: { w: 3, h: 3 }, supportsStreaming: false,
+  },
+  treemap: {
+    type: 'treemap', label: 'Treemap', icon: 'grid-3x3',
+    defaultSize: { w: 6, h: 4 }, minSize: { w: 3, h: 3 }, supportsStreaming: false,
+  },
+  gauge: {
+    type: 'gauge', label: 'Gauge', icon: 'gauge',
+    defaultSize: { w: 3, h: 3 }, minSize: { w: 2, h: 2 }, supportsStreaming: true,
+  },
+  funnel: {
+    type: 'funnel', label: 'Funnel', icon: 'filter',
+    defaultSize: { w: 4, h: 4 }, minSize: { w: 3, h: 3 }, supportsStreaming: false,
+  },
+  scatter: {
+    type: 'scatter', label: 'Scatter', icon: 'scatter-chart',
+    defaultSize: { w: 6, h: 4 }, minSize: { w: 4, h: 3 }, supportsStreaming: true,
+  },
+  heatmap: {
+    type: 'heatmap', label: 'Heatmap', icon: 'grid-2x2',
+    defaultSize: { w: 8, h: 4 }, minSize: { w: 4, h: 3 }, supportsStreaming: false,
   },
 };
 
