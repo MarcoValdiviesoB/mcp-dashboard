@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "mcp-dashboard": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "cwd": ".",
+      "env": {
+        "DASHBOARD_PORT": "4800"
+      }
+    }
+  }
+}
