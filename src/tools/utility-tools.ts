@@ -136,14 +136,14 @@ export const definitions = [
   // ─── Workers ────────────────────────────────────────────────
   {
     name: 'dashboard_start_worker',
-    description: 'Start a background worker that pushes data to a widget on an interval. Types: system_cpu (CPU % as metric_card), system_memory (RAM as metric_card), system_load (load avg as metric_card), system_uptime (uptime as metric_card), system_full (CPU+RAM as line_chart - append points over time), system_processes (system info as table), http_poll (poll a URL and log response to terminal widget, requires params.url). The worker runs server-side and pushes data via push_data semantics.',
+    description: 'Start a background worker that pushes data to a widget on an interval. Types: system_cpu (CPU % as metric_card), system_memory (RAM as metric_card), system_load (load avg as metric_card), system_uptime (uptime as metric_card), system_full (CPU+RAM as line_chart - append points over time), system_processes (system info as table), http_poll (poll a URL and log response to terminal widget, requires params.url), http_json (fetch URL and push JSON body as widget data - requires params.url), shell_exec (run shell command and push JSON output as widget data - requires params.command). The worker runs server-side and pushes data via push_data semantics.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         widgetId: { type: 'string', description: 'Target widget ID to push data to' },
-        type: { type: 'string', description: 'Worker type: system_cpu, system_memory, system_load, system_uptime, system_full, system_processes, http_poll' },
+        type: { type: 'string', description: 'Worker type: system_cpu, system_memory, system_load, system_uptime, system_full, system_processes, http_poll, http_json, shell_exec' },
         interval: { type: 'number', description: 'Interval in milliseconds (min 1000). Default 5000.' },
-        params: { type: 'object', description: 'Extra params (e.g. {url: "..."} for http_poll)' },
+        params: { type: 'object', description: 'Extra params (e.g. {url: "..."} for http_poll/http_json, {command: "..."} for shell_exec)' },
       },
       required: ['widgetId', 'type'],
     },

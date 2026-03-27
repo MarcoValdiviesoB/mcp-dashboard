@@ -1,4 +1,5 @@
 import os from 'os';
+import { execSync } from 'child_process';
 import { WidgetStore } from '../store/widget-store.js';
 import { broadcast } from '../bridge.js';
 
@@ -118,6 +119,49 @@ const WORKER_TYPES: Record<string, (config: WorkerConfig) => unknown> = {
         lines: [{
           text: `ERROR: ${err.message} - ${url}`,
           type: 'stderr',
+          timestamp: new Date().toISOString(),
+        }],
+      };
+    }
+  },
+
+  // Fetch a URL and push the JSON body directly as widget data
+  http_json: async (config: WorkerConfig) => {
+    const url = config.params?.url as string;
+    if (!url) return { value: 'No URL', label: 'ERROR' };
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return { value: `HTTP ${res.status}`, label: 'ERROR' };
+      const body = await res.json();
+      return body;
+    } catch (err: any) {
+      return { value: 'Error', label: err.message };
+    }
+  },
+
+  // Execute a shell command and push parsed JSON output as widget data
+  shell_exec: (config: WorkerConfig) => {
+    const cmd = config.params?.command as string;
+    if (!cmd) return { value: 'No command', label: 'ERROR' };
+    try {
+      const output = execSync(cmd, { timeout: 10000, encoding: 'utf-8' }).trim();
+      try {
+        return JSON.parse(output);
+      } catch {
+        // If not JSON, return as terminal lines
+        return {
+          lines: output.split('\n').map((text: string) => ({
+            text,
+            type: 'stdout' as const,
+            timestamp: new Date().toISOString(),
+          })),
+        };
+      }
+    } catch (err: any) {
+      return {
+        lines: [{
+          text: `ERROR: ${err.message}`,
+          type: 'stderr' as const,
           timestamp: new Date().toISOString(),
         }],
       };
