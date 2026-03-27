@@ -19,7 +19,7 @@ import { initBridge, setRemoteMode, broadcast } from './bridge.js';
 import { registerTools, TOOL_COUNT } from './tools/index.js';
 import { WidgetStore } from './store/widget-store.js';
 import { WorkspaceStore } from './store/workspace-store.js';
-import { listWorkers, stopWorker } from './workers/worker-manager.js';
+import { listWorkers, stopWorker, restoreWorkers } from './workers/worker-manager.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.DASHBOARD_PORT || '4800', 10);
@@ -190,6 +190,11 @@ async function main() {
 
     if (!isPrimary) {
       setRemoteMode(PORT);
+    }
+
+    // 2.5 Restore persisted workers (only primary should run them)
+    if (isPrimary) {
+      restoreWorkers();
     }
 
     // 3. MCP server (always starts, regardless of HTTP)

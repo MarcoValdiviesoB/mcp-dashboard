@@ -2,6 +2,7 @@ import os from 'os';
 import { execSync } from 'child_process';
 import { WidgetStore } from '../store/widget-store.js';
 import { broadcast } from '../bridge.js';
+import { getDb } from '../db.js';
 
 export interface WorkerConfig {
   id: string;
@@ -248,6 +249,29 @@ const WORKER_TYPES: Record<string, (config: WorkerConfig) => unknown> = {
 
 // ─── Manager ──────────────────────────────────────────────────
 
+function runWorkerProcess(config: WorkerConfig): void {
+  const handler = WORKER_TYPES[config.type];
+  if (!handler) return;
+
+  const tick = async () => {
+    try {
+      const data = await handler(config);
+      if (!data) return;
+      const widget = WidgetStore.pushData(config.widgetId, data);
+      if (widget) {
+        broadcast({ type: 'widget_data_pushed', payload: { widgetId: config.widgetId, push: data } });
+      }
+    } catch (err: any) {
+      console.error(`[Worker ${config.id}] Error:`, err.message);
+    }
+  };
+
+  tick();
+  const timer = setInterval(tick, config.interval);
+  workers.set(config.id, { config, timer, startedAt: new Date().toISOString() });
+  console.error(`[Worker] Started: ${config.id} (${config.type}) -> widget ${config.widgetId} every ${config.interval}ms`);
+}
+
 export function startWorker(config: WorkerConfig): { ok: boolean; error?: string } {
   if (workers.has(config.id)) {
     return { ok: false, error: 'Worker already running with this ID' };
@@ -258,27 +282,13 @@ export function startWorker(config: WorkerConfig): { ok: boolean; error?: string
     return { ok: false, error: `Unknown worker type: ${config.type}. Available: ${Object.keys(WORKER_TYPES).join(', ')}` };
   }
 
-  const tick = async () => {
-    try {
-      const data = await handler(config);
-      if (!data) return;
+  // Persist to DB
+  const db = getDb();
+  db.prepare('INSERT OR REPLACE INTO workers (id, widget_id, type, interval_ms, params) VALUES (?, ?, ?, ?, ?)').run(
+    config.id, config.widgetId, config.type, config.interval, JSON.stringify(config.params ?? {})
+  );
 
-      // Push data to widget
-      const widget = WidgetStore.pushData(config.widgetId, data);
-      if (widget) {
-        broadcast({ type: 'widget_data_pushed', payload: { widgetId: config.widgetId, push: data } });
-      }
-    } catch (err: any) {
-      console.error(`[Worker ${config.id}] Error:`, err.message);
-    }
-  };
-
-  // Run immediately then on interval
-  tick();
-  const timer = setInterval(tick, config.interval);
-
-  workers.set(config.id, { config, timer, startedAt: new Date().toISOString() });
-  console.error(`[Worker] Started: ${config.id} (${config.type}) -> widget ${config.widgetId} every ${config.interval}ms`);
+  runWorkerProcess(config);
   return { ok: true };
 }
 
@@ -287,6 +297,11 @@ export function stopWorker(id: string): boolean {
   if (!worker) return false;
   clearInterval(worker.timer);
   workers.delete(id);
+
+  // Remove from DB
+  const db = getDb();
+  db.prepare('DELETE FROM workers WHERE id = ?').run(id);
+
   console.error(`[Worker] Stopped: ${id}`);
   return true;
 }
@@ -299,6 +314,39 @@ export function listWorkers(): Array<{ id: string; type: string; widgetId: strin
     interval: w.config.interval,
     startedAt: w.startedAt,
   }));
+}
+
+/** Restore all workers from DB on server startup */
+export function restoreWorkers(): void {
+  const db = getDb();
+  const rows = db.prepare('SELECT * FROM workers').all() as any[];
+  if (rows.length === 0) return;
+
+  console.error(`[Worker] Restoring ${rows.length} workers from DB...`);
+  for (const row of rows) {
+    const config: WorkerConfig = {
+      id: row.id,
+      widgetId: row.widget_id,
+      type: row.type,
+      interval: row.interval_ms,
+      params: JSON.parse(row.params || '{}'),
+    };
+
+    // Check that the widget still exists
+    const widget = WidgetStore.get(config.widgetId);
+    if (!widget) {
+      console.error(`[Worker] Skipping ${config.id}: widget ${config.widgetId} not found, removing from DB`);
+      db.prepare('DELETE FROM workers WHERE id = ?').run(config.id);
+      continue;
+    }
+
+    if (WORKER_TYPES[config.type]) {
+      runWorkerProcess(config);
+    } else {
+      console.error(`[Worker] Skipping ${config.id}: unknown type ${config.type}`);
+      db.prepare('DELETE FROM workers WHERE id = ?').run(config.id);
+    }
+  }
 }
 
 export function stopAllWorkers(): void {

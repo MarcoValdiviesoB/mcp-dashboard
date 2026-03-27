@@ -100,6 +100,16 @@ const MIGRATIONS: [string, string][] = [
   ['002_workspace_archived', `
     ALTER TABLE workspaces ADD COLUMN archived INTEGER NOT NULL DEFAULT 0;
   `],
+  ['005_workers', `
+    CREATE TABLE IF NOT EXISTS workers (
+      id            TEXT PRIMARY KEY,
+      widget_id     TEXT NOT NULL,
+      type          TEXT NOT NULL,
+      interval_ms   INTEGER NOT NULL DEFAULT 5000,
+      params        TEXT NOT NULL DEFAULT '{}',
+      created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `],
   ['003_workspace_utilities', `
     CREATE TABLE IF NOT EXISTS workspace_tasks (
       id            TEXT PRIMARY KEY,
