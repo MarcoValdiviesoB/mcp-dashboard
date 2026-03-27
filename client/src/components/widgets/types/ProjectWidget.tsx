@@ -1,4 +1,4 @@
-import { Github, MessageSquare, BookOpen, ArrowRight, FolderKanban, Circle } from 'lucide-react';
+import { Github, MessageSquare, BookOpen, ArrowRight, FolderKanban, Circle, Globe, Zap } from 'lucide-react';
 import { useDashboardStore } from '../../../stores/dashboard-store';
 import { cn } from '../../../lib/utils';
 
@@ -11,10 +11,13 @@ interface ProjectChannel {
 interface ProjectNotionPage {
   title: string; url: string; type?: string;
 }
+interface ProjectEndpoint {
+  name: string; url: string; status?: string; responseTime?: number; statusCode?: number; lastChecked?: string;
+}
 interface ProjectData {
   name: string; description?: string; status?: string;
   repos?: ProjectRepo[]; channels?: ProjectChannel[];
-  notion?: ProjectNotionPage[]; workspaceId?: string; tags?: string[];
+  notion?: ProjectNotionPage[]; endpoints?: ProjectEndpoint[]; workspaceId?: string; tags?: string[];
 }
 
 const STATUS_STYLE: Record<string, { color: string; label: string }> = {
@@ -109,6 +112,40 @@ export function ProjectWidget({ data }: { data: ProjectData; config?: any }) {
                 )}
               </a>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Endpoints status */}
+      {data.endpoints && data.endpoints.length > 0 && (
+        <div className="mb-3">
+          <span className="text-[9px] text-zinc-600 data-mono uppercase tracking-wider">Status</span>
+          <div className="mt-1 space-y-1">
+            {data.endpoints.map((ep, i) => {
+              const isUp = ep.status === 'up';
+              const isSlow = ep.status === 'slow';
+              const isDown = ep.status === 'down';
+              return (
+                <div key={i} className="flex items-center gap-2 px-2 py-1 rounded-md">
+                  <span className={cn(
+                    'w-2 h-2 rounded-full shrink-0',
+                    isUp ? 'bg-emerald-400' : isSlow ? 'bg-amber-400' : isDown ? 'bg-red-400' : 'bg-zinc-600',
+                    isUp && 'status-breathe'
+                  )} />
+                  <span className="text-[11px] text-zinc-300 truncate flex-1">{ep.name}</span>
+                  {ep.responseTime !== undefined && ep.responseTime > 0 && (
+                    <span className={cn('text-[9px] data-mono', isUp ? 'text-zinc-500' : isSlow ? 'text-amber-400' : 'text-red-400')}>
+                      {ep.responseTime}ms
+                    </span>
+                  )}
+                  {ep.statusCode !== undefined && ep.statusCode > 0 && (
+                    <span className={cn('text-[8px] data-mono px-1 py-0.5 rounded', isUp ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400')}>
+                      {ep.statusCode}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

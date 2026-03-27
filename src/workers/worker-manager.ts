@@ -217,6 +217,37 @@ const WORKER_TYPES: Record<string, (config: WorkerConfig) => unknown> = {
     }
   },
 
+  // Site monitor: check HTTP status of endpoints, push to project widget
+  site_monitor: async (config: WorkerConfig) => {
+    const urls = config.params?.urls as Array<{ name: string; url: string }>;
+    if (!urls?.length) return null;
+
+    const endpoints = await Promise.all(urls.map(async ({ name, url }) => {
+      try {
+        const start = Date.now();
+        const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(10000) });
+        const ms = Date.now() - start;
+        return {
+          name, url,
+          status: res.ok ? (ms > 3000 ? 'slow' : 'up') : 'down',
+          responseTime: ms,
+          statusCode: res.status,
+          lastChecked: new Date().toISOString(),
+        };
+      } catch {
+        return {
+          name, url,
+          status: 'down' as const,
+          responseTime: 0,
+          statusCode: 0,
+          lastChecked: new Date().toISOString(),
+        };
+      }
+    }));
+
+    return { endpoints };
+  },
+
   // Execute a shell command and push parsed JSON output as widget data
   shell_exec: (config: WorkerConfig) => {
     const cmd = config.params?.command as string;

@@ -236,6 +236,19 @@ function mergeWidgetData(type: WidgetType, current: any, push: any): any {
     case 'links':
       return { ...current, items: [...(current.items ?? []), ...(push.items ?? [])] };
 
+    case 'project': {
+      if (push.endpoints) {
+        const endpoints = [...(current.endpoints ?? [])];
+        for (const ep of push.endpoints) {
+          const idx = endpoints.findIndex((e: any) => e.name === ep.name || e.url === ep.url);
+          if (idx >= 0) endpoints[idx] = { ...endpoints[idx], ...ep };
+          else endpoints.push(ep);
+        }
+        return { ...current, ...push, endpoints };
+      }
+      return { ...current, ...push };
+    }
+
     default:
       return { ...current, ...push };
   }

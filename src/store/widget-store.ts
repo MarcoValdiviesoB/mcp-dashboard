@@ -220,6 +220,19 @@ function mergeData(type: WidgetType, current: unknown, push: unknown): unknown {
       return { ...cur, items };
     }
 
+    case 'project': {
+      if (p.endpoints) {
+        const endpoints = [...(cur.endpoints ?? [])];
+        for (const ep of p.endpoints) {
+          const idx = endpoints.findIndex((e: any) => e.name === ep.name || e.url === ep.url);
+          if (idx >= 0) endpoints[idx] = { ...endpoints[idx], ...ep };
+          else endpoints.push(ep);
+        }
+        return { ...cur, ...p, endpoints };
+      }
+      return { ...cur, ...p };
+    }
+
     default:
       return { ...cur, ...p };
   }

@@ -206,6 +206,15 @@ export interface ProjectNotionPage {
   type?: 'database' | 'page' | 'task';
 }
 
+export interface ProjectEndpoint {
+  name: string;
+  url: string;
+  status?: 'up' | 'down' | 'slow' | 'unknown';
+  responseTime?: number;
+  statusCode?: number;
+  lastChecked?: string;
+}
+
 export interface ProjectData {
   name: string;
   description?: string;
@@ -213,6 +222,7 @@ export interface ProjectData {
   repos?: ProjectRepo[];
   channels?: ProjectChannel[];
   notion?: ProjectNotionPage[];
+  endpoints?: ProjectEndpoint[];
   workspaceId?: string;
   tags?: string[];
 }
