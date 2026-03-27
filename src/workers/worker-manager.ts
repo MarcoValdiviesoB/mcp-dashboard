@@ -139,6 +139,83 @@ const WORKER_TYPES: Record<string, (config: WorkerConfig) => unknown> = {
     }
   },
 
+  // GitHub: fetch recent PRs and issues for a repo
+  github_repo: (config: WorkerConfig) => {
+    const repo = config.params?.repo as string; // e.g. "ticketplushq/tables-web"
+    if (!repo) return { events: [{ id: 'err', timestamp: new Date().toISOString(), title: 'No repo param', status: 'error' }] };
+
+    try {
+      // Fetch PRs
+      const prsRaw = execSync(
+        `gh pr list --repo ${repo} --state all --limit 10 --json number,title,state,author,createdAt,url --jq '.'`,
+        { timeout: 15000, encoding: 'utf-8' }
+      ).trim();
+      const prs = JSON.parse(prsRaw || '[]');
+
+      // Fetch issues
+      const issuesRaw = execSync(
+        `gh issue list --repo ${repo} --state all --limit 10 --json number,title,state,author,createdAt,url,labels --jq '.'`,
+        { timeout: 15000, encoding: 'utf-8' }
+      ).trim();
+      const issues = JSON.parse(issuesRaw || '[]');
+
+      // Merge and sort by date
+      const events = [
+        ...prs.map((pr: any) => ({
+          id: `pr-${pr.number}`,
+          timestamp: pr.createdAt,
+          title: `PR #${pr.number}: ${pr.title}`,
+          description: `by ${pr.author?.login || 'unknown'} — ${pr.state}`,
+          status: pr.state === 'MERGED' ? 'success' : pr.state === 'OPEN' ? 'info' : pr.state === 'CLOSED' ? 'error' : 'pending',
+        })),
+        ...issues.map((issue: any) => ({
+          id: `issue-${issue.number}`,
+          timestamp: issue.createdAt,
+          title: `#${issue.number}: ${issue.title}`,
+          description: `by ${issue.author?.login || 'unknown'} — ${issue.state}${issue.labels?.length ? ' — ' + issue.labels.map((l: any) => l.name).join(', ') : ''}`,
+          status: issue.state === 'OPEN' ? 'warning' : 'success',
+        })),
+      ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      return { events };
+    } catch (err: any) {
+      return { events: [{ id: 'err', timestamp: new Date().toISOString(), title: `Error: ${err.message}`, status: 'error' }] };
+    }
+  },
+
+  // GitHub: fetch PR checks/status for a repo
+  github_prs: (config: WorkerConfig) => {
+    const repo = config.params?.repo as string;
+    if (!repo) return { columns: [], rows: [] };
+
+    try {
+      const raw = execSync(
+        `gh pr list --repo ${repo} --state open --limit 20 --json number,title,author,createdAt,reviewDecision,additions,deletions,url --jq '.'`,
+        { timeout: 15000, encoding: 'utf-8' }
+      ).trim();
+      const prs = JSON.parse(raw || '[]');
+
+      return {
+        columns: [
+          { key: 'pr', label: '#', align: 'center', sortable: true },
+          { key: 'title', label: 'Title' },
+          { key: 'author', label: 'Author' },
+          { key: 'review', label: 'Review', sortable: true },
+          { key: 'changes', label: '+/-', align: 'right' },
+        ],
+        rows: prs.map((pr: any) => ({
+          pr: pr.number,
+          title: pr.title,
+          author: pr.author?.login || '?',
+          review: pr.reviewDecision || 'PENDING',
+          changes: `+${pr.additions || 0}/-${pr.deletions || 0}`,
+        })),
+      };
+    } catch (err: any) {
+      return { columns: [{ key: 'error', label: 'Error' }], rows: [{ error: err.message }] };
+    }
+  },
+
   // Execute a shell command and push parsed JSON output as widget data
   shell_exec: (config: WorkerConfig) => {
     const cmd = config.params?.command as string;
