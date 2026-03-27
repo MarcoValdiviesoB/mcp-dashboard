@@ -17,6 +17,8 @@ import os from 'os';
 import { getDb } from './db.js';
 import { initBridge, setRemoteMode, broadcast } from './bridge.js';
 import { registerTools, TOOL_COUNT } from './tools/index.js';
+import { WidgetStore } from './store/widget-store.js';
+import { WorkspaceStore } from './store/workspace-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.DASHBOARD_PORT || '4800', 10);
@@ -56,6 +58,63 @@ function tryStartHttp(): Promise<boolean> {
         port: PORT,
         urls: ips.map(ip => `http://${ip}:${PORT}`),
       });
+    });
+
+    // ─── Events API (external systems push data here) ──────────
+    app.post('/api/events', (req, res) => {
+      const { action, ...payload } = req.body;
+
+      try {
+        switch (action) {
+          case 'push_data': {
+            const { widgetId, push } = payload;
+            const widget = WidgetStore.pushData(widgetId, push);
+            if (!widget) { res.status(404).json({ error: 'Widget not found' }); return; }
+            broadcast({ type: 'widget_data_pushed', payload: { widgetId, push } });
+            res.json({ ok: true, widgetId });
+            break;
+          }
+
+          case 'update_widget': {
+            const { widgetId, title, data, config } = payload;
+            const widget = WidgetStore.update(widgetId, { title, data, config });
+            if (!widget) { res.status(404).json({ error: 'Widget not found' }); return; }
+            broadcast({ type: 'widget_updated', payload: widget });
+            res.json({ ok: true, widgetId });
+            break;
+          }
+
+          case 'create_widget': {
+            const { workspaceId, type, title, data, config, position } = payload;
+            const widget = WidgetStore.create({ workspaceId, type, title, data, config, position, source: 'api' });
+            broadcast({ type: 'widget_created', payload: widget });
+            res.json({ ok: true, widgetId: widget.id });
+            break;
+          }
+
+          case 'notify': {
+            const { type: nType, title, message, duration } = payload;
+            broadcast({ type: 'notification', payload: { id: Date.now().toString(36), type: nType || 'info', title, message, duration } });
+            res.json({ ok: true });
+            break;
+          }
+
+          default:
+            res.status(400).json({ error: `Unknown action: ${action}`, available: ['push_data', 'update_widget', 'create_widget', 'notify'] });
+        }
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // GET helper to list widgets for integrations
+    app.get('/api/workspaces', (_req, res) => {
+      res.json(WorkspaceStore.listWithCounts());
+    });
+
+    app.get('/api/workspaces/:id/widgets', (req, res) => {
+      const widgets = WidgetStore.listByWorkspace(req.params.id);
+      res.json(widgets.map(w => ({ id: w.id, type: w.type, title: w.title })));
     });
 
     // Receive broadcast from secondary instances

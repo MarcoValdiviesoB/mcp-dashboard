@@ -5,6 +5,7 @@ import { broadcast } from '../bridge.js';
 import { WorkspaceStore } from '../store/workspace-store.js';
 import { WidgetStore } from '../store/widget-store.js';
 import { TaskStore, HighlightStore, ReminderStore } from '../store/utility-store.js';
+import { startWorker, stopWorker, listWorkers } from '../workers/worker-manager.js';
 
 export const definitions = [
   {
@@ -132,6 +133,37 @@ export const definitions = [
       required: ['widgetId'],
     },
   },
+  // ─── Workers ────────────────────────────────────────────────
+  {
+    name: 'dashboard_start_worker',
+    description: 'Start a background worker that pushes data to a widget on an interval. Types: system_cpu (CPU % as metric_card), system_memory (RAM as metric_card), system_load (load avg as metric_card), system_uptime (uptime as metric_card), system_full (CPU+RAM as line_chart - append points over time), system_processes (system info as table), http_poll (poll a URL and log response to terminal widget, requires params.url). The worker runs server-side and pushes data via push_data semantics.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        widgetId: { type: 'string', description: 'Target widget ID to push data to' },
+        type: { type: 'string', description: 'Worker type: system_cpu, system_memory, system_load, system_uptime, system_full, system_processes, http_poll' },
+        interval: { type: 'number', description: 'Interval in milliseconds (min 1000). Default 5000.' },
+        params: { type: 'object', description: 'Extra params (e.g. {url: "..."} for http_poll)' },
+      },
+      required: ['widgetId', 'type'],
+    },
+  },
+  {
+    name: 'dashboard_stop_worker',
+    description: 'Stop a running background worker by ID.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        workerId: { type: 'string', description: 'Worker ID to stop' },
+      },
+      required: ['workerId'],
+    },
+  },
+  {
+    name: 'dashboard_list_workers',
+    description: 'List all running background workers.',
+    inputSchema: { type: 'object' as const, properties: {} },
+  },
 ];
 
 export const handlers: Record<string, (args: any) => Promise<any>> = {
@@ -253,5 +285,40 @@ export const handlers: Record<string, (args: any) => Promise<any>> = {
     if (!widget) return { content: [{ type: 'text', text: JSON.stringify({ error: 'Widget not found' }) }], isError: true };
     broadcast({ type: 'widget_updated', payload: widget });
     return { content: [{ type: 'text', text: JSON.stringify({ widgetId: widget.id, pinned: widget.pinned }) }] };
+  },
+
+  // ─── Workers ────────────────────────────────────────────────
+
+  async dashboard_start_worker(args: any) {
+    const parsed = z.object({
+      widgetId: z.string(),
+      type: z.string(),
+      interval: z.number().int().min(1000).default(5000),
+      params: z.record(z.unknown()).optional(),
+    }).parse(args);
+
+    const workerId = `w_${nanoid(8)}`;
+    const result = startWorker({
+      id: workerId,
+      widgetId: parsed.widgetId,
+      type: parsed.type,
+      interval: parsed.interval,
+      params: parsed.params,
+    });
+
+    if (!result.ok) {
+      return { content: [{ type: 'text', text: JSON.stringify({ error: result.error }) }], isError: true };
+    }
+    return { content: [{ type: 'text', text: JSON.stringify({ workerId, type: parsed.type, widgetId: parsed.widgetId, interval: parsed.interval }) }] };
+  },
+
+  async dashboard_stop_worker(args: any) {
+    const { workerId } = z.object({ workerId: z.string() }).parse(args);
+    const stopped = stopWorker(workerId);
+    return { content: [{ type: 'text', text: JSON.stringify({ stopped, workerId }) }] };
+  },
+
+  async dashboard_list_workers() {
+    return { content: [{ type: 'text', text: JSON.stringify(listWorkers()) }] };
   },
 };
