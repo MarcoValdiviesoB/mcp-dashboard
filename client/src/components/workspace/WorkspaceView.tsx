@@ -24,7 +24,6 @@ export function WorkspaceView() {
   );
 
   const highlighted = useMemo(() => widgets.filter(w => w.pinned), [widgets]);
-  const regular = useMemo(() => widgets.filter(w => !w.pinned), [widgets]);
 
   const exportPDF = useCallback(async () => {
     if (!contentRef.current || !workspace) return;
@@ -168,9 +167,9 @@ export function WorkspaceView() {
           </div>
         )}
 
-        {/* Regular widget grid */}
+        {/* Full widget grid (all widgets, including pinned ones) */}
         <div className="p-4">
-          {regular.length === 0 && highlighted.length === 0 ? (
+          {widgets.length === 0 ? (
             <div className="flex items-center justify-center h-64">
               <p className="text-sm text-zinc-600">
                 This workspace is empty. Claude will add widgets via MCP tools.
@@ -179,7 +178,7 @@ export function WorkspaceView() {
           ) : (
             <WidgetGrid
               key={activeWorkspaceId}
-              widgets={regular}
+              widgets={widgets}
               columns={workspace.columns}
               rowHeight={workspace.rowHeight}
             />

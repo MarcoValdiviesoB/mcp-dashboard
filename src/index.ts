@@ -67,7 +67,17 @@ function tryStartHttp(): Promise<boolean> {
       try {
         switch (action) {
           case 'push_data': {
-            const { widgetId, push } = payload;
+            let { widgetId, push } = payload;
+
+            // Magic ID: find widget by source tag
+            if (widgetId.startsWith('__') && widgetId.endsWith('__')) {
+              const tag = widgetId.slice(2, -2);
+              const db = getDb();
+              const row = db.prepare('SELECT id FROM widgets WHERE source = ? LIMIT 1').get(tag) as any;
+              if (row) widgetId = row.id;
+              else { res.json({ ok: false, skipped: true, reason: 'No widget with source: ' + tag }); return; }
+            }
+
             const widget = WidgetStore.pushData(widgetId, push);
             if (!widget) { res.status(404).json({ error: 'Widget not found' }); return; }
             broadcast({ type: 'widget_data_pushed', payload: { widgetId, push } });
