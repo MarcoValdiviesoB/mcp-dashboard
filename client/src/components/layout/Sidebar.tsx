@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useDashboardStore } from '../../stores/dashboard-store';
-import { LayoutDashboard, Activity, Wifi, WifiOff, X, Archive, ArchiveRestore, Trash2, Bell, Share2, Copy, Check } from 'lucide-react';
+import { LayoutDashboard, Activity, Wifi, WifiOff, X, Archive, ArchiveRestore, Trash2, Bell, Share2, Copy, Check, Cpu, Square } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { socketEmit, socketRequest } from '../../lib/socket';
 
@@ -350,6 +350,105 @@ export function ActivityBar() {
           <span className="text-[10px] data-mono">Waiting for signals...</span>
         </div>
       )}
+
+      {/* Workers indicator - pushed to right */}
+      <WorkersIndicator />
     </div>
+  );
+}
+
+function WorkersIndicator() {
+  const [workers, setWorkers] = useState<any[]>([]);
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState({ bottom: 0, right: 0 });
+
+  const load = async () => {
+    try {
+      const res = await fetch('/api/workers');
+      setWorkers(await res.json());
+    } catch { setWorkers([]); }
+  };
+
+  const toggle = () => {
+    if (!open) load();
+    setOpen(!open);
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setPos({ bottom: window.innerHeight - rect.top + 4, right: window.innerWidth - rect.right });
+    }
+  };
+
+  const stop = async (id: string) => {
+    await fetch(`/api/workers/${id}`, { method: 'DELETE' });
+    load();
+  };
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (btnRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        onClick={toggle}
+        className={cn(
+          'ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] data-mono transition-colors',
+          workers.length > 0
+            ? open ? 'text-emerald-400 bg-emerald-500/10' : 'text-emerald-400/70 hover:text-emerald-400'
+            : 'text-zinc-700'
+        )}
+      >
+        <Cpu className={cn('w-3 h-3', workers.length > 0 && 'status-breathe')} />
+        {workers.length > 0 ? workers.length : '0'} workers
+      </button>
+
+      {open && workers.length > 0 && createPortal(
+        <div
+          className="fixed z-[9999] w-80 bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl shadow-black/50 overflow-hidden"
+          style={{ bottom: pos.bottom, right: pos.right }}
+        >
+          <div className="px-3 py-2 border-b border-zinc-800 text-[10px] text-zinc-500 data-mono uppercase tracking-wider flex items-center gap-2">
+            <Cpu className="w-3 h-3" />
+            Running Workers
+          </div>
+          <div className="max-h-64 overflow-auto">
+            {workers.map((w: any) => (
+              <div key={w.id} className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-800/50 group">
+                <span className="activity-dot shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-emerald-400 data-mono">{w.type}</span>
+                    <span className="text-[9px] text-zinc-600 data-mono">every {w.interval / 1000}s</span>
+                  </div>
+                  <span className="text-[9px] text-zinc-600 truncate block">{w.widgetId}</span>
+                </div>
+                <button
+                  onClick={() => stop(w.id)}
+                  className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-zinc-600 hover:text-red-400 transition-all"
+                  data-tip="Stop worker"
+                >
+                  <Square className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   );
 }

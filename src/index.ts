@@ -19,6 +19,7 @@ import { initBridge, setRemoteMode, broadcast } from './bridge.js';
 import { registerTools, TOOL_COUNT } from './tools/index.js';
 import { WidgetStore } from './store/widget-store.js';
 import { WorkspaceStore } from './store/workspace-store.js';
+import { listWorkers, stopWorker } from './workers/worker-manager.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.DASHBOARD_PORT || '4800', 10);
@@ -125,6 +126,16 @@ function tryStartHttp(): Promise<boolean> {
     app.get('/api/workspaces/:id/widgets', (req, res) => {
       const widgets = WidgetStore.listByWorkspace(req.params.id);
       res.json(widgets.map(w => ({ id: w.id, type: w.type, title: w.title })));
+    });
+
+    // Workers API
+    app.get('/api/workers', (_req, res) => {
+      res.json(listWorkers());
+    });
+
+    app.delete('/api/workers/:id', (req, res) => {
+      const stopped = stopWorker(req.params.id);
+      res.json({ stopped });
     });
 
     // Receive broadcast from secondary instances
