@@ -48,6 +48,40 @@ export function ProjectWidget({ data }: { data: ProjectData; config?: any }) {
           {status.label}
         </span>
       </div>
+
+      {/* Endpoints status - most prominent */}
+      {data.endpoints && data.endpoints.length > 0 && (
+        <div className="mb-3 px-2 py-1.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+          <div className="space-y-1">
+            {data.endpoints.map((ep, i) => {
+              const isUp = ep.status === 'up';
+              const isSlow = ep.status === 'slow';
+              const isDown = ep.status === 'down';
+              return (
+                <a key={i} href={ep.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 py-0.5 hover:opacity-80 transition-opacity cursor-pointer">
+                  <span className={cn(
+                    'w-2 h-2 rounded-full shrink-0',
+                    isUp ? 'bg-emerald-400' : isSlow ? 'bg-amber-400' : isDown ? 'bg-red-400' : 'bg-zinc-600',
+                    isUp && 'status-breathe'
+                  )} />
+                  <span className="text-[11px] text-zinc-300 truncate flex-1">{ep.name}</span>
+                  {ep.responseTime !== undefined && ep.responseTime > 0 && (
+                    <span className={cn('text-[9px] data-mono', isUp ? 'text-emerald-400/70' : isSlow ? 'text-amber-400' : 'text-red-400')}>
+                      {ep.responseTime}ms
+                    </span>
+                  )}
+                  {ep.statusCode !== undefined && ep.statusCode > 0 && (
+                    <span className={cn('text-[8px] data-mono px-1 py-0.5 rounded', isUp ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400')}>
+                      {ep.statusCode}
+                    </span>
+                  )}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {data.description && (
         <p className="text-[10px] text-zinc-500 mb-3">{data.description}</p>
       )}
@@ -112,40 +146,6 @@ export function ProjectWidget({ data }: { data: ProjectData; config?: any }) {
                 )}
               </a>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Endpoints status */}
-      {data.endpoints && data.endpoints.length > 0 && (
-        <div className="mb-3">
-          <span className="text-[9px] text-zinc-600 data-mono uppercase tracking-wider">Status</span>
-          <div className="mt-1 space-y-1">
-            {data.endpoints.map((ep, i) => {
-              const isUp = ep.status === 'up';
-              const isSlow = ep.status === 'slow';
-              const isDown = ep.status === 'down';
-              return (
-                <div key={i} className="flex items-center gap-2 px-2 py-1 rounded-md">
-                  <span className={cn(
-                    'w-2 h-2 rounded-full shrink-0',
-                    isUp ? 'bg-emerald-400' : isSlow ? 'bg-amber-400' : isDown ? 'bg-red-400' : 'bg-zinc-600',
-                    isUp && 'status-breathe'
-                  )} />
-                  <span className="text-[11px] text-zinc-300 truncate flex-1">{ep.name}</span>
-                  {ep.responseTime !== undefined && ep.responseTime > 0 && (
-                    <span className={cn('text-[9px] data-mono', isUp ? 'text-zinc-500' : isSlow ? 'text-amber-400' : 'text-red-400')}>
-                      {ep.responseTime}ms
-                    </span>
-                  )}
-                  {ep.statusCode !== undefined && ep.statusCode > 0 && (
-                    <span className={cn('text-[8px] data-mono px-1 py-0.5 rounded', isUp ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400')}>
-                      {ep.statusCode}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
           </div>
         </div>
       )}

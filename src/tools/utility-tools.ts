@@ -278,7 +278,7 @@ export const handlers: Record<string, (args: any) => Promise<any>> = {
   // ─── Highlights ─────────────────────────────────────────────
 
   async dashboard_pin_widget(args: any) {
-    const parsed = z.object({ widgetId: z.string(), pinned: z.boolean().default(true) }).parse(args);
+    const parsed = z.object({ widgetId: z.string(), pinned: z.preprocess(v => v === 'true' || v === true, z.boolean()).default(true) }).parse(args);
     const db = getDb();
     db.prepare('UPDATE widgets SET pinned = ? WHERE id = ?').run(parsed.pinned ? 1 : 0, parsed.widgetId);
     const widget = WidgetStore.get(parsed.widgetId);
